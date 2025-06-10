@@ -1,6 +1,5 @@
-package org.example;
+package olegmoz.raqoom;
 
-import olegmoz.raqoom.Project;
 import org.assertj.core.api.ThrowableAssert;
 import org.junit.Test;
 

@@ -29,10 +29,14 @@ public class Project {
         } catch (Exception e) {
             throw new RuntimeException("Failed building project '%s'".formatted(name), e);
         }
-        var jar = new File(root(), "build/libs/" + name + "-1.0-SNAPSHOT.jar");
+        var jar = jar();
         if (!jar.exists()) {
             throw new IllegalStateException("Cannot find jar file %s".formatted(jar));
         }
+    }
+
+    public File jar() {
+        return new File(root(), "build/libs/" + name + "-1.0-SNAPSHOT.jar");
     }
 
     private File root() {

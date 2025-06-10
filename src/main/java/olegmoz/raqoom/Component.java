@@ -1,0 +1,38 @@
+package olegmoz.raqoom;
+
+import java.io.File;
+import java.net.URL;
+import java.net.URLClassLoader;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.jar.JarFile;
+
+public class Component {
+
+    private static final String CLASS_EXT = ".class";
+
+    private final File jar;
+
+    public Component(File jar) {
+        this.jar = jar;
+    }
+
+    @SuppressWarnings("rawtypes")
+    public Collection<Class> classes() {
+        var classes = new ArrayList<Class>();
+        try (var jarFile = new JarFile(jar); var loader = new URLClassLoader(new URL[]{jar.toURI().toURL()})) {
+            var entries = jarFile.entries();
+            while (entries.hasMoreElements()) {
+                var entry = entries.nextElement().getName();
+                if (entry.endsWith(CLASS_EXT)) {
+                    var className = entry.replace('/', '.')
+                            .substring(0, entry.length() - CLASS_EXT.length());
+                    classes.add(loader.loadClass(className));
+                }
+            }
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to list classes from jar '%s'".formatted(jar), e);
+        }
+        return classes;
+    }
+}
