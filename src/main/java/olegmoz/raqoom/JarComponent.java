@@ -1,5 +1,7 @@
 package olegmoz.raqoom;
 
+import olegmoz.raqoom.report.SharedActionsReport;
+
 import java.io.File;
 import java.net.URL;
 import java.net.URLClassLoader;
@@ -8,7 +10,7 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.jar.JarFile;
 
-public class JarComponent implements Component {
+public class JarComponent implements SharedActionsReport.Component {
 
     private static final String CLASS_EXT = ".class";
     private static final String ACTION = "org.example.Action";
@@ -20,8 +22,14 @@ public class JarComponent implements Component {
     }
 
     @Override
-    public Collection<ClassInfo> classes() {
-        var classes = new ArrayList<ClassInfo>();
+    public Collection<ClassInfo> actions() {
+        return classes().stream()
+                .filter(JarClassInfo::isAction)
+                .map(c -> (ClassInfo) c).toList();
+    }
+
+    Collection<JarClassInfo> classes() {
+        var classes = new ArrayList<JarClassInfo>();
         try (var jarFile = new JarFile(jar); var loader = new URLClassLoader(new URL[]{jar.toURI().toURL()})) {
             var entries = jarFile.entries();
             while (entries.hasMoreElements()) {
@@ -38,11 +46,11 @@ public class JarComponent implements Component {
         return classes;
     }
 
-    private ClassInfo toClassInfo(Class<?> cl) {
+    private JarClassInfo toClassInfo(Class<?> cl) {
         return new JarClassInfo(cl);
     }
 
-    private static final class JarClassInfo implements ClassInfo {
+    static final class JarClassInfo implements ClassInfo {
         private final Class<?> raw;
 
         private JarClassInfo(Class<?> raw) {
@@ -59,7 +67,6 @@ public class JarComponent implements Component {
             return raw.getSimpleName();
         }
 
-        @Override
         public boolean isAction() {
             return Arrays.stream(raw.getInterfaces())
                     .map(Class::getName)

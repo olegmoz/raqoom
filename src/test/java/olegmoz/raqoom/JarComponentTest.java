@@ -80,4 +80,15 @@ public class JarComponentTest {
         // then
         assertThat(actual).isEqualTo(expected);
     }
+
+    @Test
+    public void list_actions() {
+        // when
+        var actions = component.actions();
+
+        // then
+        assertThat(actions).hasSize(1);
+        var names = actions.stream().map(ClassInfo::fullName).collect(toSet());
+        assertThat(names).isEqualTo(Set.of("org.example.SomeAction"));
+    }
 }

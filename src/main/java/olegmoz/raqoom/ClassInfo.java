@@ -5,6 +5,4 @@ public interface ClassInfo {
     String fullName();
 
     String simpleName();
-
-    boolean isAction();
 }
