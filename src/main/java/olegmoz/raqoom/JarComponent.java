@@ -4,12 +4,14 @@ import java.io.File;
 import java.net.URL;
 import java.net.URLClassLoader;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.jar.JarFile;
 
 public class JarComponent implements Component {
 
     private static final String CLASS_EXT = ".class";
+    private static final String ACTION = "org.example.Action";
 
     private final File jar;
 
@@ -55,6 +57,13 @@ public class JarComponent implements Component {
         @Override
         public String simpleName() {
             return raw.getSimpleName();
+        }
+
+        @Override
+        public boolean isAction() {
+            return Arrays.stream(raw.getInterfaces())
+                    .map(Class::getName)
+                    .anyMatch(name -> name.equals(ACTION));
         }
     }
 }
