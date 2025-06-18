@@ -13,15 +13,13 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 class SharedActionsReportTest {
 
-    private final SharedActionsReport subj = new SharedActionsReport();
-
     @Test
     public void report_no_violations_when_no_actions() {
         // given
-        Set<Component> components = Set.of(component("a"), component("b"));
+        var report = new SharedActionsReport(Set.of(component("a"), component("b")));
 
         // when
-        var violations = subj.report(components);
+        var violations = report.violations();
 
         // then
         assertThat(violations).isEmpty();
@@ -37,9 +35,10 @@ class SharedActionsReportTest {
         var a = component("a", create, update, delete);
         var b = component("b", update, reset);
         var c = component("c", update, delete, reset);
+        var report = new SharedActionsReport(Set.of(a, b, c));
 
         // when
-        var violations = subj.report(Set.of(a, b, c));
+        var violations = report.violations();
 
         // then
         assertThat(violations).hasSize(3);

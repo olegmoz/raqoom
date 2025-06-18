@@ -10,7 +10,13 @@ import static java.util.stream.Collectors.toSet;
 
 public class SharedActionsReport {
 
-    public Set<Violation> report(Collection<Component> components) {
+    private final Collection<Component> components;
+
+    public SharedActionsReport(Collection<Component> components) {
+        this.components = components;
+    }
+
+    public Set<Violation> violations() {
         return components.stream()
                 .flatMap(component -> component.actions().stream()
                         .map(action -> new ActionComponent(action, component)))
