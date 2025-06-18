@@ -1,7 +1,5 @@
 package olegmoz.raqoom;
 
-import olegmoz.raqoom.report.SharedActionsReport;
-
 import java.io.File;
 import java.net.URL;
 import java.net.URLClassLoader;
@@ -10,7 +8,7 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.jar.JarFile;
 
-public class JarComponent implements SharedActionsReport.Component {
+public class JarComponent implements Component {
 
     private static final String CLASS_EXT = ".class";
     private static final String ACTION = "org.example.Action";
