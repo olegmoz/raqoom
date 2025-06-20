@@ -25,7 +25,16 @@ public class JarComponentTest {
 
     @BeforeEach
     public void setUp() {
-        component = new JarComponent(PROJECT.jar());
+        component = new JarComponent("test", PROJECT.jar());
+    }
+
+    @Test
+    public void return_component_name() {
+        // when
+        var name = component.name();
+
+        // then
+        assertThat(name.value()).isEqualTo("test");
     }
 
     @Test

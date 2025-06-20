@@ -8,10 +8,19 @@ import java.util.Collection;
 
 public class CsvComponent implements Component {
 
+    private static final String CSV_EXTENSION = ".csv";
+
     private final File csv;
+    private final ComponentName name;
 
     public CsvComponent(File csv) {
         this.csv = csv;
+        this.name = new ComponentName(extractName(csv));
+    }
+
+    @Override
+    public ComponentName name() {
+        return name;
     }
 
     @Override
@@ -64,6 +73,14 @@ public class CsvComponent implements Component {
 
     private void writeAction(FileWriter writer, ClassInfo info) throws IOException {
         writer.write(String.format("%s,%s,%s\n", info.fullName(), info.simpleName(), "true"));
+    }
+
+    private static String extractName(File csv) {
+        String fileName = csv.getName();
+        if (fileName.endsWith(CSV_EXTENSION)) {
+            return fileName.substring(0, fileName.length() - CSV_EXTENSION.length());
+        }
+        return fileName;
     }
 
     private static class CsvClassInfo implements ClassInfo {

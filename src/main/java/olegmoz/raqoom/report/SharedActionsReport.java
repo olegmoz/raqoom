@@ -1,12 +1,13 @@
 package olegmoz.raqoom.report;
 
 import olegmoz.raqoom.ClassInfo;
+import olegmoz.raqoom.ComponentName;
 
+import java.io.File;
 import java.util.Collection;
-import java.util.Set;
 import java.util.stream.Collectors;
 
-import static java.util.stream.Collectors.toSet;
+import static java.util.Comparator.comparing;
 
 public class SharedActionsReport {
 
@@ -16,26 +17,33 @@ public class SharedActionsReport {
         this.components = components;
     }
 
-    public Set<Violation> violations() {
-        return components.stream()
-                .flatMap(component -> component.actions().stream()
-                        .map(action -> new ActionComponent(action, component)))
-                .collect(Collectors.groupingBy(
-                        ActionComponent::action,
-                        Collectors.mapping(ActionComponent::component, toSet())))
-                .entrySet().stream()
-                .filter(entry -> entry.getValue().size() > 1)
-                .map(entry -> new Violation(entry.getKey(), entry.getValue()))
-                .collect(toSet());
-    }
-
-    private record ActionComponent(ClassInfo action, Component component) {
-    }
-
-    public record Violation(ClassInfo action, Set<Component> components) {
+    public void write(File csv) {
+        try (var writer = new java.io.FileWriter(csv, true)) {
+            for (Component component : components.stream().sorted(comparing(Component::name)).toList()) {
+                for (ClassInfo action : component.actions().stream().sorted(comparing(ClassInfo::simpleName)).toList()) {
+                    var otherComponents = components.stream()
+                            .filter(c -> c != component)
+                            .filter(c -> c.actions().contains(action))
+                            .toList();
+                    if (!otherComponents.isEmpty()) {
+                        var componentNames = otherComponents.stream()
+                                .map(Component::name)
+                                .map(ComponentName::value)
+                                .sorted()
+                                .collect(Collectors.joining(" "));
+                        writer.write(String.format("%s,%s,%s\n", component.name().value(), action.simpleName(), componentNames));
+                    }
+                }
+            }
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to write file", e);
+        }
     }
 
     public interface Component {
+
+        ComponentName name();
+
         Collection<ClassInfo> actions();
     }
 }

@@ -18,6 +18,19 @@ public class CsvComponentTest {
     Path tempDir;
 
     @Test
+    public void return_component_name() {
+        // given
+        var csvFile = tempDir.resolve("some_name.csv").toFile();
+        var component = new CsvComponent(csvFile);
+
+        // when
+        var name = component.name();
+
+        // then
+        assertThat(name.value()).isEqualTo("some_name");
+    }
+
+    @Test
     public void write_to_non_existing_file() throws IOException {
         // given
         var csvFile = tempDir.resolve("example.csv").toFile();
@@ -40,12 +53,7 @@ public class CsvComponentTest {
         var csvFile = tempDir.resolve("test.csv").toFile();
         Files.createFile(csvFile.toPath());
         var csvComponent = new CsvComponent(csvFile);
-        var component = new Component() {
-            @Override
-            public Collection<ClassInfo> actions() {
-                return List.of();
-            }
-        };
+        var component = new TestComponent();
 
         // then
         assertThatThrownBy(() -> csvComponent.write(component))
@@ -70,10 +78,10 @@ public class CsvComponentTest {
         // given
         var csvFile = tempDir.resolve("mixed.csv").toFile();
         var csvContent = """
-            org.example.Action1,Action1,true
-            org.example.NotAction,NotAction,false
-            org.example.Action2,Action2,true
-            """;
+                org.example.Action1,Action1,true
+                org.example.NotAction,NotAction,false
+                org.example.Action2,Action2,true
+                """;
         Files.writeString(csvFile.toPath(), csvContent);
         var component = new CsvComponent(csvFile);
 
@@ -91,9 +99,9 @@ public class CsvComponentTest {
         // given
         var csvFile = tempDir.resolve("test.csv").toFile();
         var csvContent = """
-            org.example.CreateAction,CreateAction,true
-            org.example.UpdateAction,UpdateAction,true
-            """;
+                org.example.CreateAction,CreateAction,true
+                org.example.UpdateAction,UpdateAction,true
+                """;
         Files.writeString(csvFile.toPath(), csvContent);
         var component = new CsvComponent(csvFile);
 
@@ -103,14 +111,14 @@ public class CsvComponentTest {
         // then
         assertThat(actions).hasSize(2);
         var createAction = actions.stream()
-            .filter(a -> a.fullName().equals("org.example.CreateAction"))
-            .findFirst()
-            .orElseThrow();
+                .filter(a -> a.fullName().equals("org.example.CreateAction"))
+                .findFirst()
+                .orElseThrow();
         assertThat(createAction.simpleName()).isEqualTo("CreateAction");
         var updateAction = actions.stream()
-            .filter(a -> a.fullName().equals("org.example.UpdateAction"))
-            .findFirst()
-            .orElseThrow();
+                .filter(a -> a.fullName().equals("org.example.UpdateAction"))
+                .findFirst()
+                .orElseThrow();
         assertThat(updateAction.simpleName()).isEqualTo("UpdateAction");
     }
 
@@ -119,10 +127,10 @@ public class CsvComponentTest {
         // given
         var csvFile = tempDir.resolve("incomplete_line.csv").toFile();
         var csvContent = """
-            org.example.Action1,Action1,true
-            incomplete,line
-            org.example.Action2,Action2,true
-            """;
+                org.example.Action1,Action1,true
+                incomplete,line
+                org.example.Action2,Action2,true
+                """;
         Files.writeString(csvFile.toPath(), csvContent);
         var component = new CsvComponent(csvFile);
 
@@ -137,8 +145,8 @@ public class CsvComponentTest {
         // given
         var csvFile = tempDir.resolve("action_malformed.csv").toFile();
         var csvContent = """
-            org.example.Action,Action,yes
-            """;
+                org.example.Action,Action,yes
+                """;
         Files.writeString(csvFile.toPath(), csvContent);
         var component = new CsvComponent(csvFile);
 
@@ -149,6 +157,11 @@ public class CsvComponentTest {
     }
 
     private static class TestComponent implements Component {
+        @Override
+        public ComponentName name() {
+            return new ComponentName("test");
+        }
+
         @Override
         public Collection<ClassInfo> actions() {
             return List.of(

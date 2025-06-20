@@ -13,10 +13,17 @@ public class JarComponent implements Component {
     private static final String CLASS_EXT = ".class";
     private static final String ACTION = "org.example.Action";
 
+    private final ComponentName name;
     private final File jar;
 
-    public JarComponent(File jar) {
+    public JarComponent(String name, File jar) {
+        this.name = new ComponentName(name);
         this.jar = jar;
+    }
+
+    @Override
+    public ComponentName name() {
+        return name;
     }
 
     @Override
