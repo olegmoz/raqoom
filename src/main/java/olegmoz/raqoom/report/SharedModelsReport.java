@@ -5,12 +5,12 @@ import olegmoz.raqoom.ClassInfo;
 import java.io.File;
 import java.util.Collection;
 
-public class SharedActionsReport {
+public class SharedModelsReport {
 
     private final SharedClassesReport<Component> delegate;
 
-    public SharedActionsReport(Collection<Component> components) {
-        this.delegate = new SharedClassesReport<>(components, Component::actions);
+    public SharedModelsReport(Collection<Component> components) {
+        this.delegate = new SharedClassesReport<>(components, Component::models);
     }
 
     public void write(File csv) {
@@ -18,6 +18,6 @@ public class SharedActionsReport {
     }
 
     public interface Component extends SharedClassesReport.Component {
-        Collection<ClassInfo> actions();
+        Collection<ClassInfo> models();
     }
 }
