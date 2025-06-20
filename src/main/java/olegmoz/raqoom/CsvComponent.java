@@ -5,6 +5,11 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.List;
+import java.util.stream.Stream;
+
+import static java.lang.String.format;
+import static java.util.Comparator.comparing;
 
 public class CsvComponent implements Component {
 
@@ -25,29 +30,37 @@ public class CsvComponent implements Component {
 
     @Override
     public Collection<ClassInfo> actions() {
+        return read().stream().filter(cl -> cl.isAction).map(cl -> (ClassInfo) cl).toList();
+    }
+
+    @Override
+    public Collection<ClassInfo> models() {
+        return read().stream().filter(cl -> cl.isModel).map(cl -> (ClassInfo) cl).toList();
+    }
+
+    List<CsvClassInfo> read() {
         if (!csv.exists()) {
             throw new IllegalStateException("File does not exist: %s".formatted(csv));
         }
 
-        var actions = new ArrayList<ClassInfo>();
+        var classes = new ArrayList<CsvClassInfo>();
         try (var reader = new java.io.BufferedReader(new java.io.FileReader(csv))) {
             String line;
             int lineNo = 0;
             while ((line = reader.readLine()) != null) {
                 lineNo++;
                 String[] parts = line.split(",");
-                if (parts.length < 3) {
+                if (parts.length < 4) {
                     throw new IllegalArgumentException("Incomplete line #%d '%s' ".formatted(lineNo, line));
                 }
                 boolean isAction = parseBooleanStrict(parts[2], line, lineNo);
-                if (isAction) {
-                    actions.add(new CsvClassInfo(parts[0], parts[1]));
-                }
+                boolean isModel = parseBooleanStrict(parts[3], line, lineNo);
+                classes.add(new CsvClassInfo(parts[0], parts[1], isAction, isModel));
             }
         } catch (IOException e) {
             throw new RuntimeException("Failed to read file: %s".formatted(csv), e);
         }
-        return actions;
+        return classes;
     }
 
     private static boolean parseBooleanStrict(String part, String line, int lineNo) {
@@ -63,16 +76,20 @@ public class CsvComponent implements Component {
             throw new IllegalStateException("File already exists: %s".formatted(csv));
         }
         try (FileWriter writer = new FileWriter(csv)) {
-            for (ClassInfo info : component.actions()) {
-                writeAction(writer, info);
+            var classes = Stream.concat(
+                    component.actions().stream().map(CsvClassInfo::action),
+                    component.models().stream().map(CsvClassInfo::model)
+            ).sorted(comparing(ClassInfo::fullName)).toList();
+            for (CsvClassInfo cl : classes) {
+                write(writer, cl);
             }
         } catch (IOException e) {
             throw new RuntimeException("Failed to write CSV file", e);
         }
     }
 
-    private void writeAction(FileWriter writer, ClassInfo info) throws IOException {
-        writer.write(String.format("%s,%s,%s\n", info.fullName(), info.simpleName(), "true"));
+    private void write(FileWriter writer, CsvClassInfo info) throws IOException {
+        writer.write(format("%s,%s,%s,%s\n", info.fullName(), info.simpleName(), info.isAction, info.isModel));
     }
 
     private static String extractName(File csv) {
@@ -83,23 +100,18 @@ public class CsvComponent implements Component {
         return fileName;
     }
 
-    private static class CsvClassInfo implements ClassInfo {
-        private final String fullName;
-        private final String simpleName;
+    record CsvClassInfo(String fullName, String simpleName, boolean isAction, boolean isModel) implements ClassInfo {
 
-        public CsvClassInfo(String fullName, String simpleName) {
-            this.fullName = fullName;
-            this.simpleName = simpleName;
+        public static CsvClassInfo action(ClassInfo base) {
+            return new CsvClassInfo(base, true, false);
         }
 
-        @Override
-        public String fullName() {
-            return fullName;
+        public static CsvClassInfo model(ClassInfo base) {
+            return new CsvClassInfo(base, false, true);
         }
 
-        @Override
-        public String simpleName() {
-            return simpleName;
+        CsvClassInfo(ClassInfo base, boolean isAction, boolean isModel) {
+            this(base.fullName(), base.simpleName(), isAction, isModel);
         }
     }
 }

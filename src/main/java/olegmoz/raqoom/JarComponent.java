@@ -12,6 +12,7 @@ public class JarComponent implements Component {
 
     private static final String CLASS_EXT = ".class";
     private static final String ACTION = "org.example.Action";
+    private static final String MODEL = "org.example.Model";
 
     private final ComponentName name;
     private final File jar;
@@ -30,6 +31,13 @@ public class JarComponent implements Component {
     public Collection<ClassInfo> actions() {
         return classes().stream()
                 .filter(JarClassInfo::isAction)
+                .map(c -> (ClassInfo) c).toList();
+    }
+
+    @Override
+    public Collection<ClassInfo> models() {
+        return classes().stream()
+                .filter(JarClassInfo::isModel)
                 .map(c -> (ClassInfo) c).toList();
     }
 
@@ -76,6 +84,12 @@ public class JarComponent implements Component {
             return Arrays.stream(raw.getInterfaces())
                     .map(Class::getName)
                     .anyMatch(name -> name.equals(ACTION));
+        }
+
+        public boolean isModel() {
+            return Arrays.stream(raw.getInterfaces())
+                    .map(Class::getName)
+                    .anyMatch(name -> name.equals(MODEL));
         }
     }
 }

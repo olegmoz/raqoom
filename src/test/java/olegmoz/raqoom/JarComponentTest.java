@@ -43,9 +43,13 @@ public class JarComponentTest {
         var classes = component.classes();
 
         // then
-        assertThat(classes).hasSize(3);
         var names = classes.stream().map(ClassInfo::fullName).collect(toSet());
-        assertThat(names).isEqualTo(Set.of("org.example.Main", "org.example.Action", "org.example.SomeAction"));
+        assertThat(names).isEqualTo(Set.of(
+                "org.example.Main",
+                "org.example.Action",
+                "org.example.SomeAction",
+                "org.example.Model",
+                "org.example.SomeModel"));
     }
 
     @ParameterizedTest
@@ -99,5 +103,37 @@ public class JarComponentTest {
         assertThat(actions).hasSize(1);
         var names = actions.stream().map(ClassInfo::fullName).collect(toSet());
         assertThat(names).isEqualTo(Set.of("org.example.SomeAction"));
+    }
+
+    @ParameterizedTest
+    @CsvSource({
+            "Main, false",
+            "Model, false",
+            "SomeModel, true"
+    })
+    public void identify_models(String cl, boolean expected) {
+        // given
+        var classes = component.classes();
+        var clazz = classes.stream()
+                .filter(c -> c.simpleName().equals(cl))
+                .findAny()
+                .orElseThrow();
+
+        // when
+        var actual = clazz.isModel();
+
+        // then
+        assertThat(actual).isEqualTo(expected);
+    }
+
+    @Test
+    public void list_models() {
+        // when
+        var models = component.models();
+
+        // then
+        assertThat(models).hasSize(1);
+        var names = models.stream().map(ClassInfo::fullName).collect(toSet());
+        assertThat(names).isEqualTo(Set.of("org.example.SomeModel"));
     }
 }

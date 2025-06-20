@@ -9,6 +9,7 @@ import java.nio.file.Path;
 import java.util.Collection;
 import java.util.List;
 
+import static olegmoz.raqoom.ClassInfoStub.cl;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
@@ -42,9 +43,11 @@ public class CsvComponentTest {
         // then
         assertThat(csvFile).exists();
         List<String> lines = Files.readAllLines(csvFile.toPath());
-        assertThat(lines).hasSize(2);
-        assertThat(lines.get(0)).isEqualTo("org.example.Action1,Action1,true");
-        assertThat(lines.get(1)).isEqualTo("org.example.Action2,Action2,true");
+        assertThat(lines).hasSize(4);
+        assertThat(lines.get(0)).isEqualTo("org.example.AccountModel,AccountModel,false,true");
+        assertThat(lines.get(1)).isEqualTo("org.example.CreateAction,CreateAction,true,false");
+        assertThat(lines.get(2)).isEqualTo("org.example.DeleteAction,DeleteAction,true,false");
+        assertThat(lines.get(3)).isEqualTo("org.example.UserModel,UserModel,false,true");
     }
 
     @Test
@@ -62,15 +65,82 @@ public class CsvComponentTest {
     }
 
     @Test
-    public void actions_throws_exception_when_csv_does_not_exist() {
+    public void read_throws_exception_when_csv_does_not_exist() {
         // given
         var csvFile = tempDir.resolve("nonexistent.csv").toFile();
         var component = new CsvComponent(csvFile);
 
         // then
-        assertThatThrownBy(component::actions)
+        assertThatThrownBy(component::read)
                 .isInstanceOf(IllegalStateException.class)
                 .hasMessageContaining("File does not exist");
+    }
+
+    @Test
+    public void read_provides_correct_class_info() throws IOException {
+        // given
+        var csvFile = tempDir.resolve("test.csv").toFile();
+        var csvContent = """
+                org.example.CreateAction,CreateAction,true,false
+                org.example.UserModel,UserModel,false,true
+                """;
+        Files.writeString(csvFile.toPath(), csvContent);
+        var component = new CsvComponent(csvFile);
+
+        // when
+        var classes = component.read();
+
+        // then
+        assertThat(classes).hasSize(2);
+        var createAction = classes.stream()
+                .filter(a -> a.fullName().equals("org.example.CreateAction"))
+                .findFirst()
+                .orElseThrow();
+        assertThat(createAction.simpleName()).isEqualTo("CreateAction");
+        assertThat(createAction.isAction()).isTrue();
+        assertThat(createAction.isModel()).isFalse();
+        var userModel = classes.stream()
+                .filter(a -> a.fullName().equals("org.example.UserModel"))
+                .findFirst()
+                .orElseThrow();
+        assertThat(userModel.simpleName()).isEqualTo("UserModel");
+        assertThat(userModel.isAction()).isFalse();
+        assertThat(userModel.isModel()).isTrue();
+    }
+
+    @Test
+    public void read_throws_when_line_incomplete() throws IOException {
+        // given
+        var csvFile = tempDir.resolve("incomplete_line.csv").toFile();
+        var csvContent = """
+                org.example.Action1,Action1,true,false
+                incomplete,line
+                org.example.Model1,Model1,false,true
+                """;
+        Files.writeString(csvFile.toPath(), csvContent);
+        var component = new CsvComponent(csvFile);
+
+        // then
+        assertThatThrownBy(component::read)
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("Incomplete line #2")
+                .hasMessageContaining("incomplete,line");
+    }
+
+    @Test
+    public void read_throws_when_row_malformed() throws IOException {
+        // given
+        var csvFile = tempDir.resolve("row_malformed.csv").toFile();
+        var csvContent = """
+                org.example.Action,Action,yes,no
+                """;
+        Files.writeString(csvFile.toPath(), csvContent);
+        var component = new CsvComponent(csvFile);
+
+        // then
+        assertThatThrownBy(component::read)
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("Invalid boolean value");
     }
 
     @Test
@@ -78,9 +148,9 @@ public class CsvComponentTest {
         // given
         var csvFile = tempDir.resolve("mixed.csv").toFile();
         var csvContent = """
-                org.example.Action1,Action1,true
-                org.example.NotAction,NotAction,false
-                org.example.Action2,Action2,true
+                org.example.Action1,Action1,true,false
+                org.example.NotAction,NotAction,false,false
+                org.example.Action2,Action2,true,false
                 """;
         Files.writeString(csvFile.toPath(), csvContent);
         var component = new CsvComponent(csvFile);
@@ -95,65 +165,24 @@ public class CsvComponentTest {
     }
 
     @Test
-    public void actions_provides_correct_class_info() throws IOException {
+    public void models_returns_only_models() throws IOException {
         // given
-        var csvFile = tempDir.resolve("test.csv").toFile();
+        var csvFile = tempDir.resolve("mixed.csv").toFile();
         var csvContent = """
-                org.example.CreateAction,CreateAction,true
-                org.example.UpdateAction,UpdateAction,true
+                org.example.Model1,Model1,false,true
+                org.example.NotModel,NotModel,false,false
+                org.example.Model2,Model2,false,true
                 """;
         Files.writeString(csvFile.toPath(), csvContent);
         var component = new CsvComponent(csvFile);
 
         // when
-        var actions = component.actions();
+        var models = component.models();
 
         // then
-        assertThat(actions).hasSize(2);
-        var createAction = actions.stream()
-                .filter(a -> a.fullName().equals("org.example.CreateAction"))
-                .findFirst()
-                .orElseThrow();
-        assertThat(createAction.simpleName()).isEqualTo("CreateAction");
-        var updateAction = actions.stream()
-                .filter(a -> a.fullName().equals("org.example.UpdateAction"))
-                .findFirst()
-                .orElseThrow();
-        assertThat(updateAction.simpleName()).isEqualTo("UpdateAction");
-    }
-
-    @Test
-    public void actions_throws_when_line_incomplete() throws IOException {
-        // given
-        var csvFile = tempDir.resolve("incomplete_line.csv").toFile();
-        var csvContent = """
-                org.example.Action1,Action1,true
-                incomplete,line
-                org.example.Action2,Action2,true
-                """;
-        Files.writeString(csvFile.toPath(), csvContent);
-        var component = new CsvComponent(csvFile);
-
-        // then
-        assertThatThrownBy(component::actions)
-                .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("Incomplete line");
-    }
-
-    @Test
-    public void actions_throws_when_action_row_malfromed() throws IOException {
-        // given
-        var csvFile = tempDir.resolve("action_malformed.csv").toFile();
-        var csvContent = """
-                org.example.Action,Action,yes
-                """;
-        Files.writeString(csvFile.toPath(), csvContent);
-        var component = new CsvComponent(csvFile);
-
-        // then
-        assertThatThrownBy(component::actions)
-                .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("Invalid boolean value");
+        assertThat(models).hasSize(2);
+        var fullNames = models.stream().map(ClassInfo::fullName).toList();
+        assertThat(fullNames).containsExactlyInAnyOrder("org.example.Model1", "org.example.Model2");
     }
 
     private static class TestComponent implements Component {
@@ -164,10 +193,12 @@ public class CsvComponentTest {
 
         @Override
         public Collection<ClassInfo> actions() {
-            return List.of(
-                    new ClassInfoStub("org.example.Action1", "Action1", "Action1"),
-                    new ClassInfoStub("org.example.Action2", "Action2", "Action2")
-            );
+            return List.of(cl("CreateAction"), cl("DeleteAction"));
+        }
+
+        @Override
+        public Collection<ClassInfo> models() {
+            return List.of(cl("UserModel"), cl("AccountModel"));
         }
     }
 }
