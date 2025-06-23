@@ -10,6 +10,7 @@ import java.util.stream.Stream;
 
 import static java.lang.String.format;
 import static java.util.Comparator.comparing;
+import static olegmoz.raqoom.ClassType.*;
 
 public class CsvComponent implements Component {
 
@@ -30,12 +31,12 @@ public class CsvComponent implements Component {
 
     @Override
     public Collection<ClassInfo> actions() {
-        return read().stream().filter(cl -> cl.isAction).map(cl -> (ClassInfo) cl).toList();
+        return read().stream().filter(cl -> cl.type() == ACTION).map(cl -> (ClassInfo) cl).toList();
     }
 
     @Override
     public Collection<ClassInfo> models() {
-        return read().stream().filter(cl -> cl.isModel).map(cl -> (ClassInfo) cl).toList();
+        return read().stream().filter(cl -> cl.type() == MODEL).map(cl -> (ClassInfo) cl).toList();
     }
 
     List<CsvClassInfo> read() {
@@ -46,16 +47,17 @@ public class CsvComponent implements Component {
         var classes = new ArrayList<CsvClassInfo>();
         try (var reader = new java.io.BufferedReader(new java.io.FileReader(csv))) {
             String line;
-            int lineNo = 0;
+            var lineNo = 0;
             while ((line = reader.readLine()) != null) {
                 lineNo++;
-                String[] parts = line.split(",");
-                if (parts.length < 4) {
+                var parts = line.split(",");
+                var type = parts.length > 2 ? parseType(parts[2], line, lineNo) : UNKNOWN;
+                if (parts.length < 2) {
                     throw new IllegalArgumentException("Incomplete line #%d '%s' ".formatted(lineNo, line));
                 }
-                boolean isAction = parseBooleanStrict(parts[2], line, lineNo);
-                boolean isModel = parseBooleanStrict(parts[3], line, lineNo);
-                classes.add(new CsvClassInfo(parts[0], parts[1], isAction, isModel));
+                var fullName = parts[0];
+                var simpleName = parts[1];
+                classes.add(new CsvClassInfo(fullName, simpleName, type));
             }
         } catch (IOException e) {
             throw new RuntimeException("Failed to read file: %s".formatted(csv), e);
@@ -63,12 +65,17 @@ public class CsvComponent implements Component {
         return classes;
     }
 
-    private static boolean parseBooleanStrict(String part, String line, int lineNo) {
-        String value = part.trim();
-        if (!value.equalsIgnoreCase("true") && !value.equalsIgnoreCase("false")) {
-            throw new IllegalArgumentException("Invalid boolean value '%s' in line: #%d '%s' ".formatted(value, lineNo, line));
+    private static ClassType parseType(String part, String line, int lineNo) {
+        String value = part.trim().toLowerCase();
+        if (value.isEmpty()) {
+            return UNKNOWN;
         }
-        return Boolean.parseBoolean(value);
+        return switch (value) {
+            case "action" -> ACTION;
+            case "model" -> MODEL;
+            default -> throw new IllegalArgumentException(
+                    "Invalid value '%s' in line: #%d '%s' ".formatted(part, lineNo, line));
+        };
     }
 
     public void write(Component component) {
@@ -89,7 +96,8 @@ public class CsvComponent implements Component {
     }
 
     private void write(FileWriter writer, CsvClassInfo info) throws IOException {
-        writer.write(format("%s,%s,%s,%s\n", info.fullName(), info.simpleName(), info.isAction, info.isModel));
+        var type = info.type() != UNKNOWN ? info.type().toString() : "";
+        writer.write(format("%s,%s,%s\n", info.fullName(), info.simpleName(), type));
     }
 
     private static String extractName(File csv) {
@@ -100,18 +108,18 @@ public class CsvComponent implements Component {
         return fileName;
     }
 
-    record CsvClassInfo(String fullName, String simpleName, boolean isAction, boolean isModel) implements ClassInfo {
+    record CsvClassInfo(String fullName, String simpleName, ClassType type) implements ClassInfo {
 
         public static CsvClassInfo action(ClassInfo base) {
-            return new CsvClassInfo(base, true, false);
+            return new CsvClassInfo(base, ACTION);
         }
 
         public static CsvClassInfo model(ClassInfo base) {
-            return new CsvClassInfo(base, false, true);
+            return new CsvClassInfo(base, MODEL);
         }
 
-        CsvClassInfo(ClassInfo base, boolean isAction, boolean isModel) {
-            this(base.fullName(), base.simpleName(), isAction, isModel);
+        CsvClassInfo(ClassInfo base, ClassType type) {
+            this(base.fullName(), base.simpleName(), type);
         }
     }
 }

@@ -10,6 +10,8 @@ import java.util.Collection;
 import java.util.List;
 
 import static olegmoz.raqoom.ClassInfoStub.cl;
+import static olegmoz.raqoom.ClassType.ACTION;
+import static olegmoz.raqoom.ClassType.MODEL;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
@@ -44,10 +46,10 @@ public class CsvComponentTest {
         assertThat(csvFile).exists();
         List<String> lines = Files.readAllLines(csvFile.toPath());
         assertThat(lines).hasSize(4);
-        assertThat(lines.get(0)).isEqualTo("org.example.AccountModel,AccountModel,false,true");
-        assertThat(lines.get(1)).isEqualTo("org.example.CreateAction,CreateAction,true,false");
-        assertThat(lines.get(2)).isEqualTo("org.example.DeleteAction,DeleteAction,true,false");
-        assertThat(lines.get(3)).isEqualTo("org.example.UserModel,UserModel,false,true");
+        assertThat(lines.get(0)).isEqualTo("org.example.AccountModel,AccountModel,MODEL");
+        assertThat(lines.get(1)).isEqualTo("org.example.CreateAction,CreateAction,ACTION");
+        assertThat(lines.get(2)).isEqualTo("org.example.DeleteAction,DeleteAction,ACTION");
+        assertThat(lines.get(3)).isEqualTo("org.example.UserModel,UserModel,MODEL");
     }
 
     @Test
@@ -81,8 +83,8 @@ public class CsvComponentTest {
         // given
         var csvFile = tempDir.resolve("test.csv").toFile();
         var csvContent = """
-                org.example.CreateAction,CreateAction,true,false
-                org.example.UserModel,UserModel,false,true
+                org.example.CreateAction,CreateAction,ACTION
+                org.example.UserModel,UserModel,MODEL
                 """;
         Files.writeString(csvFile.toPath(), csvContent);
         var component = new CsvComponent(csvFile);
@@ -97,15 +99,13 @@ public class CsvComponentTest {
                 .findFirst()
                 .orElseThrow();
         assertThat(createAction.simpleName()).isEqualTo("CreateAction");
-        assertThat(createAction.isAction()).isTrue();
-        assertThat(createAction.isModel()).isFalse();
+        assertThat(createAction.type()).isEqualTo(ACTION);
         var userModel = classes.stream()
                 .filter(a -> a.fullName().equals("org.example.UserModel"))
                 .findFirst()
                 .orElseThrow();
         assertThat(userModel.simpleName()).isEqualTo("UserModel");
-        assertThat(userModel.isAction()).isFalse();
-        assertThat(userModel.isModel()).isTrue();
+        assertThat(userModel.type()).isEqualTo(MODEL);
     }
 
     @Test
@@ -113,9 +113,9 @@ public class CsvComponentTest {
         // given
         var csvFile = tempDir.resolve("incomplete_line.csv").toFile();
         var csvContent = """
-                org.example.Action1,Action1,true,false
-                incomplete,line
-                org.example.Model1,Model1,false,true
+                org.example.Action1,Action1,ACTION
+                incomplete line
+                org.example.Model1,Model1,MODEL
                 """;
         Files.writeString(csvFile.toPath(), csvContent);
         var component = new CsvComponent(csvFile);
@@ -124,7 +124,7 @@ public class CsvComponentTest {
         assertThatThrownBy(component::read)
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("Incomplete line #2")
-                .hasMessageContaining("incomplete,line");
+                .hasMessageContaining("incomplete line");
     }
 
     @Test
@@ -132,7 +132,7 @@ public class CsvComponentTest {
         // given
         var csvFile = tempDir.resolve("row_malformed.csv").toFile();
         var csvContent = """
-                org.example.Action,Action,yes,no
+                org.example.Action,Action,SOMETHING
                 """;
         Files.writeString(csvFile.toPath(), csvContent);
         var component = new CsvComponent(csvFile);
@@ -140,7 +140,7 @@ public class CsvComponentTest {
         // then
         assertThatThrownBy(component::read)
                 .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("Invalid boolean value");
+                .hasMessageContaining("Invalid value");
     }
 
     @Test
@@ -148,9 +148,9 @@ public class CsvComponentTest {
         // given
         var csvFile = tempDir.resolve("mixed.csv").toFile();
         var csvContent = """
-                org.example.Action1,Action1,true,false
-                org.example.NotAction,NotAction,false,false
-                org.example.Action2,Action2,true,false
+                org.example.Action1,Action1,ACTION
+                org.example.NotAction,NotAction,
+                org.example.Action2,Action2,ACTION
                 """;
         Files.writeString(csvFile.toPath(), csvContent);
         var component = new CsvComponent(csvFile);
@@ -169,9 +169,9 @@ public class CsvComponentTest {
         // given
         var csvFile = tempDir.resolve("mixed.csv").toFile();
         var csvContent = """
-                org.example.Model1,Model1,false,true
-                org.example.NotModel,NotModel,false,false
-                org.example.Model2,Model2,false,true
+                org.example.Model1,Model1,MODEL
+                org.example.NotModel,NotModel,
+                org.example.Model2,Model2,MODEL
                 """;
         Files.writeString(csvFile.toPath(), csvContent);
         var component = new CsvComponent(csvFile);
